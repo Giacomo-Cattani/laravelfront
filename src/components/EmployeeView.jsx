@@ -99,14 +99,25 @@ function EmployeeView({ handleAlert }) {
         return completeDates;
     }
 
+    const fetchLastProjects = async () => {
+        await confAxios.get('/activity/proj')
+            .then(res => {
+                setActivity([])
+                res.data.forEach(element => {
+                    setActivity(prev => [...prev, element])
+                });
+            }).catch(err => {
+                console.log(err)
+            })
+    }
+
     useEffect(() => {
         const fetchProjects = async () => {
             await confAxios.get('/project/projects')
                 .then(res => {
                     res.data.forEach(element => {
                         const string = element.name + " (" + element.cod_project + ")"
-                        setProjects(prev => [...prev, { label: string, id: element.id_client }])
-                        // projects.push({ label: string, id: element.id_client })
+                        setProjects(prev => [...prev, { label: string, id: element.id, id_client: element.id_client }])
                     });
                 }).catch(err => {
                     console.log(err)
@@ -119,7 +130,6 @@ function EmployeeView({ handleAlert }) {
                     res.data.forEach(element => {
                         const string = element.name + " (" + element.cod_client + ")"
                         setClients(prev => [...prev, { label: string, id: element.id }])
-                        // clients.push({ label: string, id: element.id })
                     });
                 }).catch(err => {
                     console.log(err)
@@ -132,7 +142,6 @@ function EmployeeView({ handleAlert }) {
                     res.data.forEach(element => {
                         const string = element.name + " (" + element.cod_location + ")"
                         setLocations(prev => [...prev, { label: string, id: element.id }])
-                        // locations.push({ label: string, id: element.id })
                     });
                 }).catch(err => {
                     console.log(err)
@@ -142,9 +151,10 @@ function EmployeeView({ handleAlert }) {
         const fetchHours = async () => {
             await confAxios.get('/activity/hours')
                 .then(res => {
-                    if (!res) {
+                    if (res.data.length === 0) {
                         return
                     }
+                    setDatas([])
                     const result = completeAndSortDates(res.data)
                     result.forEach(element => {
                         const workTime = Number(element.work_time);
@@ -157,17 +167,6 @@ function EmployeeView({ handleAlert }) {
                             setDatas(prev => [...prev, 0])
                         }
                     }
-                }).catch(err => {
-                    console.log(err)
-                })
-        }
-
-        const fetchLastProjects = async () => {
-            await confAxios.get('/activity/proj')
-                .then(res => {
-                    res.data.forEach(element => {
-                        setActivity(prev => [...prev, element])
-                    });
                 }).catch(err => {
                     console.log(err)
                 })
@@ -206,20 +205,33 @@ function EmployeeView({ handleAlert }) {
             confAxios.post('/activity/insert', {
                 'cod_task': project.label.split(' ')[1].slice(1, -1),
                 'id_user': 1,
-                'data': data,
+                'data': data.add(1, 'day'),
                 'work_time': convertedHour,
                 'id_location': location.id,
                 'id_project': project.id,
                 'id_client': client.id,
                 'note': note
-            }).then(res => { }).catch(err => { })
-            handleAlert('Attività inserita con successo', 'success')
-            setData('')
-            setHour('')
-            setLocation(null)
-            setProject(null)
-            setClient(null)
-            setNote('')
+            }).then(res => {
+                handleAlert('Attività inserita con successo', 'success')
+                setDatas(prev => {
+                    let index = data.get('d') - 1
+                    if (data.get('d') === 0)
+                        index = 6
+
+                    prev[index] = (Number(prev[index]) + convertedHour).toFixed(2)
+                    return [...prev]
+                });
+                fetchLastProjects()
+                setData('')
+                setHour('')
+                setLocation(null)
+                setProject(null)
+                setClient(null)
+                setNote('')
+            }).catch(err => {
+                console.log(err)
+                handleAlert('Errore durante l\'inserimento', 'error')
+            })
         } else {
             handleAlert('Compila tutti i campi', 'error')
         }
@@ -231,7 +243,7 @@ function EmployeeView({ handleAlert }) {
     const handleClientChange = (event, newValue) => {
         setClient(newValue);
         if (newValue) {
-            const newFilteredProjects = projects.filter(project => project.id === newValue.id);
+            const newFilteredProjects = projects.filter(project => project.id_client === newValue.id);
             setFilteredProjects(newFilteredProjects);
         } else {
             setFilteredProjects(projects);
@@ -241,7 +253,7 @@ function EmployeeView({ handleAlert }) {
     const handleProjectChange = (event, newValue) => {
         setProject(newValue);
         if (newValue) {
-            const newFilteredClients = clients.filter(client => client.id === newValue.id);
+            const newFilteredClients = clients.filter(client => client.id === newValue.id_client);
             setFilteredClients(newFilteredClients);
             setClient(newFilteredClients[0]);
         } else {
@@ -288,20 +300,18 @@ function EmployeeView({ handleAlert }) {
                                     <DemoItem label={"Ore Lavorate"}>
                                         <TimePicker
                                             clearable
-                                            value={hour ? (dayjs(hour).format('HH:mm')) : null}
+                                            value={hour ? hour : null}
                                             onChange={(e) => {
-                                                setHour(e),
-                                                    console.log(e)
+                                                setHour(e)
                                             }}
                                             ampm={false}
                                             views={['hours', 'minutes']}
-                                            format="hh:mm" />
-                                        {dayjs(hour).format('HH:mm')}
+                                            format="HH:mm" />
                                     </DemoItem>
                                 </LocalizationProvider>
                             </Grid>
                             <Grid xs={12} >
-                                <DemoItem label={"Locaizone"}>
+                                <DemoItem label={"Locazione"}>
                                     <Autocomplete
                                         value={location}
                                         onChange={(event, newValue) => {
@@ -385,7 +395,6 @@ function EmployeeView({ handleAlert }) {
                                         data: datas ? datas : [],
                                         label: 'Ore',
                                         valueFormatter: (value) => `${convertM2H(value)}h`,
-                                        // [0, 3, 0, 2, 10, 0, 0]
                                     },
                                 ]}
                                 height={200}
@@ -455,7 +464,7 @@ function EmployeeView({ handleAlert }) {
                                                     {index !== 0 &&
                                                         <Divider key={index} variant="inset" component="li" sx={{ margin: 'auto' }} />
                                                     }
-                                                    <ListItem key={index++} sx={{ textAlign: 'center', pb: '0px' }}>
+                                                    <ListItem key={index} sx={{ textAlign: 'center', pb: '0px' }}>
                                                         <ListItemText
                                                             sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}
                                                             primary={

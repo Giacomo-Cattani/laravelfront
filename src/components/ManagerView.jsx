@@ -10,6 +10,7 @@ import { ThemeContext } from '../context/ThemeContext';
 import { useContext, useEffect, useState } from 'react';
 import { LineChart } from '@mui/x-charts/LineChart';
 import confAxios from '../axios/confAxios';
+import { useNavigate } from "react-router-dom";
 
 function ManagerView({ handleAlert }) {
     const screenTheme = useTheme();
@@ -67,19 +68,34 @@ function ManagerView({ handleAlert }) {
     const [data, setData] = useState([]);
     const [dataClient, setDataClient] = useState([]);
     const [client, setClient] = useState([]);
-    const [dataProj, setDataProj] = useState([]);
+    const [user, setUser] = useState([]);
+    const [dataProg, setDataProg] = useState([]);
+    const [prog, setProg] = useState([]);
     const [countClient, setCountClient] = useState(0);
     const [countProg, setCountProg] = useState(0);
     const [countDip, setCountDip] = useState(0);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState();
+
+    const [valueInput, setValueInput] = useState(null);
+    const [valueInput2, setValueInput2] = useState(null);
 
     const handleChange = (event, newValue) => {
         setValue(newValue);
     };
 
     const handleChangeFormat = (event, newValue) => {
+        setDataClient([]);
+        setDataProg([]);
         setFormat(newValue);
     };
+
+    useEffect(() => {
+        if (!valueInput) return;
+
+        setDataClient(transformData(valueInput, format));
+        setDataProg(transformProjectData(valueInput2, format));
+    }, [format])
+
 
     function convertM2H(timeInMinute) {
         const hours = Math.floor(timeInMinute / 60);
@@ -136,10 +152,248 @@ function ManagerView({ handleAlert }) {
     }
 
     useEffect(() => {
-        console.log(dataClient)
-        console.log(client)
-        console.log(colorsArr[10])
     }, [dataClient, client]);
+
+
+    const transformDataHours = (input) => {
+        const result = [];
+        const dataMap = {};
+        const allUsers = new Set();
+
+        // Find the current date
+        const currentDate = new Date();
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const day = currentDate.getDate();
+
+
+
+        var curr = new Date; // get current date
+        var first = curr.getDate() - curr.getDay() + 1; // First day is the day of the month - the day of the week
+        var last = first + 6; // last day is the first day + 6
+
+        // Calculate the start and end dates of the week
+        const firstDayOfWeek = new Date(curr.setDate(first));
+        const lastDayOfWeek = new Date(curr.setDate(last));
+
+        // Generate all dates of the current week
+        const allDates = [];
+        for (let d = firstDayOfWeek; d <= lastDayOfWeek; d.setDate(d.getDate() + 1)) {
+            const dateString = d.toISOString().split('T')[0];
+            allDates.push(dateString);
+            dataMap[dateString] = {};
+        }
+
+        // First pass: Build dataMap and gather all unique id_user values
+        input.forEach(item => {
+            if (!dataMap[item.data]) {
+                dataMap[item.data] = {};
+            }
+            dataMap[item.data][item.id_user] = item.work_time;
+            allUsers.add(item.id_user);
+        });
+
+        // Second pass: Ensure all id_user entries are present in each date with default value 0
+        Object.keys(dataMap).forEach(date => {
+            allUsers.forEach(user => {
+                if (!dataMap[date][user]) {
+                    dataMap[date][user] = 0;
+                }
+            });
+        });
+
+        // Build the final result array
+        for (const [date, workTimes] of Object.entries(dataMap)) {
+            result.push({
+                data: date,
+                ...workTimes
+            });
+        }
+
+        return result;
+    };
+
+    const transformData = (input, format) => {
+        const result = [];
+        const dataMap = {};
+        const allClients = new Set();
+
+        // Generate all dates of the current month
+        const currentDate = new Date();
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const allDates = [];
+
+        if (format === 'm') {
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day + 1).toISOString().split('T')[0];
+                allDates.push(date);
+                dataMap[date] = {};
+            }
+        } else {
+            for (let month = 0; month < 12; month++) {
+                const date = new Date(year, month + 1, 1).toISOString().split('T')[0].slice(0, 7);
+                allDates.push(date);
+                dataMap[date] = {};
+            }
+        }
+
+        // First pass: Build dataMap and gather all unique cod_client values
+        input.forEach(item => {
+            allClients.add(item.cod_client);
+            if (format === 'm') {
+                if (dataMap[item.data] !== undefined) {
+                    dataMap[item.data][item.cod_client] = item.total_work_time;
+                }
+            } else {
+                const yearMonth = item.data.slice(0, 7);
+
+                if (dataMap[yearMonth][item.cod_client]) {
+                    dataMap[yearMonth][item.cod_client] += item.total_work_time;
+                } else {
+                    dataMap[yearMonth][item.cod_client] = item.total_work_time;
+                }
+            }
+        });
+
+        // Second pass: Ensure all cod_client entries are present in each date with default value 0
+        if (format === 'm') {
+            Object.keys(dataMap).forEach(date => {
+                allClients.forEach(client => {
+                    if (!dataMap[date][client]) {
+                        dataMap[date][client] = 0;
+                    }
+                });
+            });
+            for (const [date, workTimes] of Object.entries(dataMap)) {
+                result.push({
+                    data: date,
+                    ...workTimes
+                });
+            }
+        } else {
+            Object.keys(dataMap).forEach(date => {
+                const month = date.slice(0, 7)
+                allClients.forEach(client => {
+                    if (!dataMap[month][client]) {
+                        dataMap[month][client] = 0;
+                    }
+                });
+            });
+            for (const [date, workTimes] of Object.entries(dataMap)) {
+                result.push({
+                    data: date,
+                    ...workTimes
+                });
+            }
+        }
+
+        // Build the final result array
+
+
+        return result;
+    };
+
+    const transformProjectData = (input, format) => {
+        const result = [];
+        const dataMap = {};
+        const allProjects = new Set();
+
+        // Generate all dates of the current month or all months of the current year
+        const currentDate = new Date();
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const allDates = [];
+
+        if (format === 'm') {
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day + 1).toISOString().split('T')[0];
+                allDates.push(date);
+                dataMap[date] = {};
+            }
+        } else {
+            for (let month = 0; month < 12; month++) {
+                const date = new Date(year, month + 1, 1).toISOString().split('T')[0].slice(0, 7);
+                allDates.push(date);
+                dataMap[date] = {};
+            }
+        }
+
+        // First pass: Build dataMap and gather all unique cod_project values
+        input.forEach(item => {
+            allProjects.add(item.cod_project);
+            if (format === 'm') {
+                if (dataMap[item.data] !== undefined) {
+                    dataMap[item.data][item.cod_project] = item.total_work_time;
+                }
+            } else {
+                const yearMonth = item.data.slice(0, 7);
+
+                if (dataMap[yearMonth][item.cod_project]) {
+                    dataMap[yearMonth][item.cod_project] += item.total_work_time;
+                } else {
+                    dataMap[yearMonth][item.cod_project] = item.total_work_time;
+                }
+            }
+        });
+
+        // Second pass: Ensure all cod_project entries are present in each date with default value 0
+        if (format === 'm') {
+            Object.keys(dataMap).forEach(date => {
+                allProjects.forEach(project => {
+                    if (!dataMap[date][project]) {
+                        dataMap[date][project] = 0;
+                    }
+                });
+            });
+            for (const [date, workTimes] of Object.entries(dataMap)) {
+                result.push({
+                    data: date,
+                    ...workTimes
+                });
+            }
+        } else {
+            Object.keys(dataMap).forEach(date => {
+                const month = date.slice(0, 7);
+                allProjects.forEach(project => {
+                    if (!dataMap[month][project]) {
+                        dataMap[month][project] = 0;
+                    }
+                });
+            });
+            for (const [date, workTimes] of Object.entries(dataMap)) {
+                result.push({
+                    data: date,
+                    ...workTimes
+                });
+            }
+        }
+
+        return result;
+    };
+
+    const fetchClient = async () => {
+        await confAxios.get('/activity/clientsH')
+            .then(res => {
+                setValueInput(res.data)
+                const transformedData = transformData(res.data, format);
+                setDataClient(transformedData);
+            }).catch(err => {
+                console.log(err)
+            })
+    }
+    const fetchProg = async () => {
+        await confAxios.get('/activity/projects')
+            .then(res => {
+                setValueInput2(res.data)
+                const transformedData = transformProjectData(res.data, format);
+                setDataProg(transformedData);
+            }).catch(err => {
+                console.log(err)
+            })
+    }
 
     useEffect(() => {
         const fetchHours = async () => {
@@ -148,18 +402,8 @@ function ManagerView({ handleAlert }) {
                     if (!res) {
                         return
                     }
-                    const result = completeAndSortDates(res.data)
-                    result.forEach(element => {
-                        const workTime = Number(element.work_time);
-                        setData(prev => [...prev, workTime.toFixed(2)]);
-                    })
-
-                    if (result.length < 7) {
-                        const length = result.length
-                        for (let i = 0; i < 7 - length; i++) {
-                            setData(prev => [...prev, 0])
-                        }
-                    }
+                    const result = transformDataHours(res.data)
+                    setData(result)
                 }).catch(err => {
                     console.log(err)
                 })
@@ -194,7 +438,6 @@ function ManagerView({ handleAlert }) {
             await confAxios.get('/client/clients')
                 .then(res => {
                     const newClient = {};
-                    console.log(res.data.length)
                     res.data.forEach(element => {
                         newClient[element.cod_client] = `${element.name} (${element.cod_client})`;
                     });
@@ -202,70 +445,54 @@ function ManagerView({ handleAlert }) {
                 })
         }
 
-        const transformData = (input) => {
-            const result = [];
-            const dataMap = {};
-            const allClients = new Set();
-
-            // First pass: Build dataMap and gather all unique cod_client values
-            input.forEach(item => {
-                if (!dataMap[item.data]) {
-                    dataMap[item.data] = {};
-                }
-                dataMap[item.data][item.cod_client] = item.total_work_time;
-                allClients.add(item.cod_client);
-            });
-
-            // Second pass: Ensure all cod_client entries are present in each date with default value 0
-            Object.keys(dataMap).forEach(date => {
-                allClients.forEach(client => {
-                    if (!dataMap[date][client]) {
-                        dataMap[date][client] = 0;
-                    }
-                });
-            });
-
-            // Build the final result array
-            for (const [date, workTimes] of Object.entries(dataMap)) {
-                result.push({
-                    data: date,
-                    ...workTimes
-                });
-            }
-
-            return result;
-        };
-        const fetchClient = async () => {
-            await confAxios.get('/activity/clients')
+        const fetchPg = async () => {
+            await confAxios.get('/project/projects')
                 .then(res => {
-                    // console.log(res.data)
-                    const transformedData = transformData(res.data);
-                    console.log(transformedData);
-                    setDataClient(transformedData);
+                    const newProject = {};
+                    res.data.forEach(element => {
+                        newProject[element.cod_project] = `${element.name} (${element.cod_project})`;
+                    });
+                    setProg(newProject);
+                })
+        }
+
+        const fetchUser = async () => {
+            await confAxios.get('/auth/users')
+                .then(res => {
+                    const newUser = {};
+                    res.data.forEach(element => {
+                        newUser[element.id] = `${element.name} ${element.surname}`;
+                    });
+                    setUser(newUser);
                 }).catch(err => {
                     console.log(err)
                 })
         }
 
-        const fetchProj = async () => {
-            await confAxios.get('/activity/projects')
-                .then(res => {
-
-                }).catch(err => {
-                    console.log(err)
-                })
-        }
 
         const fetchAll = async () => {
             setData([])
+            setDataClient([])
+            setDataProg([])
+            setClient([])
+            setProg([])
+            setCountClient(0)
+            setCountProg(0)
+            setCountDip(0)
+            setUser([])
 
-            await Promise.all([fetchHours(), fetchCl(), fetchClient(), fetchCC(), fetchCP(), fetchCD()]).then(() => {
+            setLoading(true)
+
+
+            await Promise.all([fetchHours(), fetchCl(), fetchPg(), fetchProg(), fetchClient(), fetchCC(), fetchCP(), fetchCD(), fetchUser()]).then(() => {
                 setLoading(false)
             })
         }
 
         fetchAll()
     }, []);
+
+    const navigate = useNavigate()
 
     return (
         <>
@@ -317,11 +544,15 @@ function ManagerView({ handleAlert }) {
                 <Grid container xs={12} direction={'row'} sx={{ pb: '0px' }}>
                     <Grid xs="auto" >
                         <Button variant="contained"
-                            onClick={() => handleAlert("This is a test alert", "info")} >Storico Lavori</Button>
+                            onClick={() =>
+                                navigate('/task', { replace: true })
+                            } >Storico Lavori</Button>
                     </Grid>
                     <Grid xs="auto">
                         <Button variant="contained"
-                            onClick={() => handleAlert("This is a test alert", "info")} >Lista Progetti</Button>
+                            onClick={() =>
+                                navigate('/projects', { replace: true })
+                            } >Lista Progetti</Button>
                     </Grid>
                     <Grid xs="auto" xsOffset="auto" >
                         <Button variant="contained"
@@ -360,9 +591,6 @@ function ManagerView({ handleAlert }) {
                                 <Tab label="Ore Cliente" value="2" />
                                 <Tab label="Ore Progetto" value="3" />
                             </TabList>
-                            {/* TODO:
-                                Formattare array ore dipendenti  per far si che si vedano più linee nella tabella    
-                            */}
                             <TabPanel value="1">
                                 <LineChart
                                     sx={{
@@ -372,17 +600,18 @@ function ManagerView({ handleAlert }) {
                                     }}
                                     yAxis={[{ valueFormatter: (value) => `${convertM2H(value)}h`, scaleType: 'linear', tickCount: 5 }]}
                                     xAxis={[{
+                                        dataKey: 'data',
                                         scaleType: 'point',
+                                        valueFormatter: (value, context) => value,
                                         data: ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
                                     }]}
-                                    series={[
-                                        {
-                                            data: data ? data : [],
-                                            label: 'Ore',
-                                            valueFormatter: (value) => `${convertM2H(value)}h`,
-                                            // [0, 3, 0, 2, 10, 0, 0]
-                                        },
-                                    ]}
+                                    dataset={data}
+                                    series={Object.keys(user).map((key, index) => ({
+                                        dataKey: key,
+                                        label: user[key],
+                                        color: colorsArr[index],
+                                        valueFormatter: (value) => `${convertM2H(value)}h`,
+                                    }))}
                                     height={298}
                                     margin={{ top: 15, right: 10, bottom: 20, left: 50 }}
                                     grid={{ vertical: true, horizontal: true }}
@@ -409,8 +638,6 @@ function ManagerView({ handleAlert }) {
                                     yAxis={[{ valueFormatter: (value) => `${convertM2H(value)}h`, scaleType: 'linear', tickCount: 5 }]}
                                     xAxis={[{
                                         dataKey: 'data',
-                                        // min:,
-                                        // max:,
                                         scaleType: 'point',
                                         valueFormatter: (value, context) => {
                                             return format === 'm' ?
@@ -420,13 +647,14 @@ function ManagerView({ handleAlert }) {
                                                 : value;
                                         },
                                         data:
-                                            format === 'm' ? Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }, (_, i) => i + 1).map(day => day.toString())
-                                                : ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'],
+                                            format === 'm' ?
+                                                Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }, (_, i) => i + 1).map(day => day.toString())
+                                                : ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
                                     }]}
                                     series={Object.keys(client).map((key, index) => ({
                                         dataKey: key,
                                         label: client[key],
-                                        color: colorsArr[index],
+                                        color: colorsArr[index + Object.keys(user).length],
                                         valueFormatter: (value) => `${convertM2H(value)}h`,
                                     }))}
                                     dataset={dataClient}
@@ -453,26 +681,34 @@ function ManagerView({ handleAlert }) {
                                             strokeWidth: 5,
                                         },
                                     }}
-                                    // yAxis={[{ valueFormatter: (value) => `${ convertM2H(value) }h`, scaleType: 'linear', tickCount: 5 }]}
+                                    yAxis={[{ valueFormatter: (value) => `${convertM2H(value)}h`, scaleType: 'linear', tickCount: 5 }]}
                                     xAxis={[{
-                                        scaleType: 'point', data:
-                                            format === 'm' ? Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }, (_, i) => i + 1).map(day => day.toString())
-                                                : ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'],
-                                    }]}
-                                    series={[
-                                        {
-                                            data: [0, 3, 0, 2, 10, 0, 0],
-                                            // datas ? datas : [],
-                                            label: 'Ore',
-                                            // valueFormatter: (value) => `${ convertM2H(value) }h`,
-                                            // [0, 3, 0, 2, 10, 0, 0]
+                                        dataKey: 'data',
+                                        scaleType: 'point',
+                                        valueFormatter: (value, context) => {
+                                            return format === 'm' ?
+                                                context.location === 'tick'
+                                                    ? value
+                                                    : `${value}/${new Date().getMonth() + 1}/${new Date().getFullYear()}`
+                                                : value;
                                         },
-                                    ]}
+                                        data:
+                                            format === 'm' ?
+                                                Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }, (_, i) => i + 1).map(day => day.toString())
+                                                : ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
+                                    }]}
+                                    series={Object.keys(prog).map((key, index) => ({
+                                        dataKey: key,
+                                        label: prog[key],
+                                        color: colorsArr[index + Object.keys(user).length + Object.keys(client).length],
+                                        valueFormatter: (value) => `${convertM2H(value)}h`,
+                                    }))}
+                                    dataset={dataProg}
                                     height={298}
-                                    margin={{ top: 15, right: 10, bottom: 20, left: 20 }}
+                                    margin={{ top: 15, right: 10, bottom: 20, left: 50 }}
                                     grid={{ vertical: true, horizontal: true }}
                                     colors={[theme === 'dark' ? '#d3a121' : '#c90076']}
-                                    // loading={loading}
+                                    loading={loading}
                                     slotProps={{
                                         // Custom loading message
                                         loadingOverlay: { message: 'Dati in caricamento...' },

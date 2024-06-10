@@ -54,6 +54,7 @@ export default function Login() {
                     navigate('/user', { replace: true, state: { token: token, user: user } });
                 });
             }).catch((error) => {
+                handleAlert("Invalid email or password!", "error");
                 console.log(error);
             });
         }

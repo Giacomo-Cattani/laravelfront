@@ -11,39 +11,53 @@ import Login from './pages/Login.jsx';
 import AuthMiddleware from './middleware/AuthMiddleware.jsx';
 import LoginMiddleware from './middleware/LoginMiddleware.jsx';
 import HomePage from './pages/HomePage.jsx';
+import Tasks from './pages/Tasks.jsx';
+import Projects from './pages/Projects.jsx';
 
 const router = createBrowserRouter([
   {
     path: "/",
     element:
       <LoginMiddleware>
-        {/* <Container fixed sx={{ pt: 7, display: 'flex', flexDirection: 'row', justifyContent: 'center' }}> */}
         <Navbar />
         <Login />
-        {/* </Container> */}
       </LoginMiddleware>,
   },
   {
     path: "/user",
     element:
       <AuthMiddleware >
-        {/* <Container fixed sx={{ pt: 7, display: 'flex', flexDirection: 'row', justifyContent: 'center' }}> */}
         <Navbar />
         <HomePage />
-        {/* </Container> */}
-      </AuthMiddleware>,
+      </AuthMiddleware>
+  },
+  {
+    path: "/task",
+    element:
+      <AuthMiddleware >
+        <Navbar />
+        <Tasks />
+      </AuthMiddleware>
+  },
+  {
+    path: "/projects",
+    element:
+      <AuthMiddleware >
+        <Navbar />
+        <Projects />
+      </AuthMiddleware>
   },
   {
     path: "*",
+
     element:
       <AuthMiddleware>
-        {/* <Container fixed sx={{ pt: 7, display: 'flex', flexDirection: 'row', justifyContent: 'center' }}> */}
         <Navbar />
         <NotFoundPage />
-        {/* </Container> */}
       </AuthMiddleware>,
   }
 ]);
+
 
 const ThemedApp = () => {
   const { theme } = useContext(ThemeContext);
@@ -52,7 +66,7 @@ const ThemedApp = () => {
     palette: {
       mode: theme,
       background: {
-        default: theme === 'dark' ? '#121212' : 'lightcoral',
+        default: theme === 'dark' ? '#121212' : '#f08080',
       }
     },
     components: {

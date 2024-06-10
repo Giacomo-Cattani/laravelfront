@@ -5,7 +5,7 @@ const NotFoundPage = () => {
     const navigate = useNavigate();
 
     return (
-        <div style={{ textAlign: 'center', marginTop: '100px' }}>
+        <div style={{ margin: 'auto', textAlign: 'center', marginTop: '100px' }}>
             <Typography variant="h1">404</Typography>
             <Typography variant="h5" style={{ marginBottom: "10px" }}>Page Not Found</Typography>
             <Button onClick={() => navigate('/')} variant="contained" color="primary">Go Home</Button>

@@ -12,7 +12,7 @@ import { CustomAlert } from './CustomAlert';
 
 function Navbar() {
     const { theme, setTheme } = useContext(ThemeContext);
-    const { token, setToken } = useContext(AuthContext);
+    const { token, setToken, data } = useContext(AuthContext);
     const location = useLocation();
 
     const toggleTheme = () => {
@@ -25,7 +25,6 @@ function Navbar() {
     }
 
     const navigate = useNavigate();
-    const pages = ['Products', 'Pricing', 'Blog'];
     const settings = ['Storico', 'Logout'];
 
     const [anchorElNav, setAnchorElNav] = useState(null);
@@ -59,7 +58,7 @@ function Navbar() {
             confAxiox.post('/auth/logout').
                 then(async (response) => {
                     handleAlert("Logged out successfully!", "success");
-                    await delay(1500);
+                    await delay(1000);
                     await removeLocalStorageItem('token').then(() => {
                         setToken(null);
                         navigate('/', { replace: true });
@@ -68,6 +67,8 @@ function Navbar() {
                 .catch((error) => {
                     console.error(error);
                 });
+        } else {
+            navigate('/task', { replace: true });
         }
     }
 
@@ -160,7 +161,6 @@ function Navbar() {
                                         '&:hover': {
                                             color: theme === 'dark' ? 'white' : '#001e3c',
                                             cursor: 'pointer',
-                                            // textShadow: '5px 5px 5px darkslategray',
                                         },
                                     }}
                                 >
@@ -197,11 +197,6 @@ function Navbar() {
                                         display: { xs: 'block', md: 'none' },
                                     }}
                                 >
-                                    {pages.map((page) => (
-                                        <MenuItem key={page} onClick={handleCloseNavMenu}>
-                                            <Typography color={'white'} textAlign="center">{page}</Typography>
-                                        </MenuItem>
-                                    ))}
                                 </Menu>
                             </Grid>
 
@@ -215,7 +210,6 @@ function Navbar() {
                                 alignItems: 'center',
                                 '&:hover': {
                                     cursor: 'pointer',
-                                    // textShadow: '5px 5px 5px darkslategray',
                                 }
                             }}>
                                 <AdbIcon sx={{ fontSize: '3rem', mr: 1, }} />
@@ -239,19 +233,6 @@ function Navbar() {
                             </Grid>
 
                             <Grid item sm={6} sx={{ display: { xs: 'none', md: 'flex' }, justifyContent: 'start' }}>
-                                {pages.map((page) => (
-                                    <Button
-                                        key={page}
-                                        onClick={handleCloseNavMenu}
-                                        sx={{
-                                            my: 2,
-                                            color: theme === 'dark' ? 'white' : '#001e3c',
-                                            display: 'block'
-                                        }}
-                                    >
-                                        {page}
-                                    </Button>
-                                ))}
                             </Grid>
 
                             <Grid item xs={6} sm={3} sx={{ display: 'flex', justifyContent: 'end' }}>
@@ -262,19 +243,16 @@ function Navbar() {
                                 {token !== null ?
                                     <>
                                         <Tooltip title="Open settings">
-                                            {/* <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                                            <Avatar alt="Remy Sharp" src={user} />
-                                        </IconButton> */}
                                             <Button onClick={handleOpenUserMenu} sx={{
                                                 minWidth: '105px', px: 1.5, borderRadius: 5, fontFamily: 'Cascadia Code', backgroundColor: theme === 'dark' ? '#003892' : '#001e3c',
                                                 color: 'white',
                                                 fontSize: 15, textTransform: 'none'
                                             }} disableRipple variant="contained" startIcon={<Avatar alt="Remy Sharp" src={user} />}>
-                                                Name
+                                                {data.decodedToken?.name + " " + data.decodedToken?.surname}
                                             </Button>
                                         </Tooltip>
                                         <Menu
-                                            sx={{ mt: '47px', ml: '5px' }}
+                                            sx={{ mt: '47px', mr: 6, width: '150px' }}
                                             id="menu-appbar"
                                             anchorEl={anchorElUser}
                                             anchorOrigin={{
@@ -282,6 +260,7 @@ function Navbar() {
                                                 horizontal: 'right',
                                             }}
                                             keepMounted
+                                            disableScrollLock={true}
                                             transformOrigin={{
                                                 vertical: 'top',
                                                 horizontal: 'right',
@@ -289,12 +268,19 @@ function Navbar() {
                                             open={Boolean(anchorElUser)}
                                             onClose={handleCloseUserMenu}
                                         >
-                                            {settings.map((setting) => (
-                                                <MenuItem key={setting} onClick={() => { handleProfile(setting); handleCloseUserMenu(); }} sx={{ pr: 2 }}>
-                                                    {setting === 'Logout' ? <LogoutIcon style={{ color: 'white' }} sx={{ pr: 1 }} /> : <HistoryIcon style={{ color: 'white' }} sx={{ pr: 1 }} />}
-                                                    <Typography sx={{ fontFamily: 'Cascadia Code', fontSize: 15, color: 'white' }} textAlign="center" >{setting}</Typography>
-                                                </MenuItem>
-                                            ))}
+                                            {data.decodedToken?.role ?
+                                                settings.map((setting) => {
+                                                    if (data.decodedToken?.role !== 'dipe' && setting === 'Storico')
+                                                        return null;
+
+                                                    return (
+                                                        < MenuItem key={setting} onClick={() => { handleProfile(setting); handleCloseUserMenu(); }} sx={{ pr: 2 }}>
+                                                            {setting === 'Logout' ? <LogoutIcon style={{ color: 'white' }} sx={{ pr: 1 }} /> : <HistoryIcon style={{ color: 'white' }} sx={{ pr: 1 }} />}
+                                                            <Typography sx={{ fontFamily: 'Cascadia Code', fontSize: 15, color: 'white' }} textAlign="center" >{setting}</Typography>
+                                                        </MenuItem>
+                                                    )
+                                                }) : null
+                                            }
                                         </Menu>
                                     </> : null}
                             </Grid>
