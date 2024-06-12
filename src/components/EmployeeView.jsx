@@ -378,7 +378,9 @@ function EmployeeView({ handleAlert }) {
                             <Button sx={{
                                 fontFamily: 'Cascadia Code', textTransform: 'none', backgroundColor: theme === 'dark' ? '#003892' : '#001e3c',
                                 color: 'white', '&:hover': { backgroundColor: '#ffa500 ' }
-                            }} size="medium" >
+                            }} size="medium"
+                                onClick={() => handleAlert('Grafico rappresentante le ore lavorate durante la settimana', 'info')}
+                            >
                                 <InfoIcon /></Button>
                         </CardActions>
                         <CardContent sx={{ pb: '0px' }}>
@@ -424,7 +426,7 @@ function EmployeeView({ handleAlert }) {
                             <Button sx={{
                                 fontFamily: 'Cascadia Code', textTransform: 'none', backgroundColor: theme === 'dark' ? '#003892' : '#001e3c',
                                 color: 'white', '&:hover': { backgroundColor: '#ffa500 ' }
-                            }} size="medium" >
+                            }} size="medium" onClick={() => handleAlert('Lista delle attività recenti', 'info')}>
                                 <InfoIcon /></Button>
                         </CardActions>
                         <CardContent sx={{ pb: '0px' }}>

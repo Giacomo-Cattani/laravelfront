@@ -1,26 +1,16 @@
-import { useContext, useEffect, useState, useMemo } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Box, Unstable_Grid2 as Grid, IconButton } from '@mui/material';
 import confAxios from '../axios/confAxios';
-import { DataGrid, GridToolbar, gridClasses, GRID_CHECKBOX_SELECTION_COL_DEF } from '@mui/x-data-grid';
-import { AuthContext } from '../context/AuthContext';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
+import { DataGrid, GridToolbar, gridClasses } from '@mui/x-data-grid';
 import { ThemeContext } from '../context/ThemeContext';
-import { Card, CardActions, CardContent, Typography } from '@mui/material';
-import { Autocomplete } from '@mui/material';
-import { TextField } from '@mui/material';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
-import { DemoItem } from '@mui/x-date-pickers/internals/demo';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import updateLocale from 'dayjs/plugin/updateLocale'
 import duration from 'dayjs/plugin/duration'
 import { CustomAlert } from '../components/CustomAlert';
 import InfoIcon from '@mui/icons-material/Info';
 import Tooltip from '@mui/material/Tooltip';
+import { useNavigate } from 'react-router-dom';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 export default function Tasks() {
     dayjs.extend(updateLocale)
@@ -100,8 +90,8 @@ export default function Tasks() {
                             placement="top"
                             id={String(params.row.id)} // Ensure id is a string
                         >
-                            <IconButton sx={{ p: 0 }} onClick={() => console.log(params)}>
-                                <InfoIcon sx={{ fontSize: 20 }} />
+                            <IconButton sx={{ p: 0 }}>
+                                <InfoIcon sx={{ fontSize: 20, color: 'white' }} />
                             </IconButton>
                         </Tooltip>
                     </Box>
@@ -139,8 +129,8 @@ export default function Tasks() {
                             placement="top"
                             id={String(params.row.id)} // Ensure id is a string
                         >
-                            <IconButton sx={{ p: 0 }} onClick={() => console.log(params)}>
-                                <InfoIcon sx={{ fontSize: 20 }} />
+                            <IconButton sx={{ p: 0 }}>
+                                <InfoIcon sx={{ fontSize: 20, color: 'white' }} />
                             </IconButton>
                         </Tooltip>
                     </Box>
@@ -149,10 +139,7 @@ export default function Tasks() {
         }
     ];
 
-    useEffect(() => {
-        console.log("task")
-        console.log(tasks)
-    }, [tasks])
+    const navigate = useNavigate()
 
     useEffect(() => {
         const fetchProjects = async () => {
@@ -200,7 +187,6 @@ export default function Tasks() {
                     dataF: project.last_task
                 })
             })
-            // console.log(temp)
             return temp
         })
     }, [clients && projects])
@@ -220,6 +206,9 @@ export default function Tasks() {
                     severity={alert.severity}
                     handleClose={alert.handleClose}
                 />
+                <IconButton sx={{ ml: 2, width: 51, display: 'flex', justifyContent: 'left' }} onClick={() => navigate('/')}>
+                    <ArrowBackIcon sx={{ color: theme === 'dark' ? null : '#001e3c' }} fontSize="large" />
+                </IconButton>
 
                 <Grid xs='auto'>
                     <DataGrid
@@ -235,11 +224,29 @@ export default function Tasks() {
                             [`& .${gridClasses.cell}`]: {
                                 py: 1,
                             },
-                            backgroundColor: theme === 'dark' ? null : 'white',
+                            border: 0,
+                            borderRadius: 3,
+                            boxShadow: 'rgba(0, 0, 0, 0.25) 0px 54px 55px, rgba(0, 0, 0, 0.12) 0px -12px 30px, rgba(0, 0, 0, 0.12) 0px 4px 6px, rgba(0, 0, 0, 0.17) 0px 12px 13px, rgba(0, 0, 0, 0.09) 0px -3px 5px;',
+                            p: 1,
                             [`& .${gridClasses.columnHeader}`]: {
-                                backgroundColor: theme === 'dark' ? null : '#00A4DE',
+                                backgroundColor: theme === 'dark' ? null : '#001e3c',
+                            },
+                            [`& .${gridClasses.footerContainer}`]: {
+                                color: 'white', // Change this to your desired color
+                            },
+                            [`& .MuiCheckbox-root`]: {
+                                color: 'white', // Change this to your desired color
+                            },
+                            ['& .MuiDataGrid-toolbarContainer']: {
+                                ['& .MuiButton-root']: {
+                                    backgroundColor: 'transparent',
+                                }
+                            },
+                            ['& .MuiToolbar-root']: {
+                                color: 'white'
                             }
-                        }}
+                        }
+                        }
                         columnVisibilityModel={{
                             id: false,
                         }}

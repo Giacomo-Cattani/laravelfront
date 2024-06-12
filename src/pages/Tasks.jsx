@@ -19,6 +19,9 @@ import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import updateLocale from 'dayjs/plugin/updateLocale'
 import duration from 'dayjs/plugin/duration'
 import { CustomAlert } from '../components/CustomAlert';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useNavigate } from 'react-router-dom';
+import { yellow } from '@mui/material/colors';
 
 export default function Tasks() {
     dayjs.extend(updateLocale)
@@ -60,6 +63,7 @@ export default function Tasks() {
 
     const [loading, setLoading] = useState(true);
     const [alert, setAlert] = useState({ message: null, severity: null, handleClose: () => { } })
+    const navigate = useNavigate();
 
     const columns = [
         {
@@ -217,6 +221,7 @@ export default function Tasks() {
         selected.forEach(async (element) => {
             await confAxios.post(`/activity/delete/${element}`,)
                 .then(res => {
+                    handleAlert('Attività eliminata con successo', 'success')
                     setRows(prevRows => prevRows.filter(row => row.id !== element));
                     setSelected([])
                 }).catch(err => {
@@ -320,6 +325,9 @@ export default function Tasks() {
                     severity={alert.severity}
                     handleClose={alert.handleClose}
                 />
+                <IconButton sx={{ ml: 2, mb: -5, width: 51, display: 'flex', justifyContent: 'left' }} onClick={() => navigate('/')}>
+                    <ArrowBackIcon sx={{ color: theme === 'dark' ? null : '#001e3c' }} fontSize="large" />
+                </IconButton>
                 <Grid xsOffset='auto'>
                     <IconButton
 
@@ -488,17 +496,35 @@ export default function Tasks() {
                                 rows={rows}
                                 columns={columns}
                                 checkboxSelection
-                                autoPageSize={true}
+                                // autoPageSize={true}
                                 autoHeight={true}
                                 getRowHeight={() => 'auto'}
                                 sx={{
                                     [`& .${gridClasses.cell}`]: {
                                         py: 1,
                                     },
-                                    backgroundColor: theme === 'dark' ? null : 'white',
+                                    border: 0,
+                                    borderRadius: 3,
+                                    boxShadow: 'rgba(0, 0, 0, 0.25) 0px 54px 55px, rgba(0, 0, 0, 0.12) 0px -12px 30px, rgba(0, 0, 0, 0.12) 0px 4px 6px, rgba(0, 0, 0, 0.17) 0px 12px 13px, rgba(0, 0, 0, 0.09) 0px -3px 5px;',
+                                    p: 1,
                                     [`& .${gridClasses.columnHeader}`]: {
-                                        backgroundColor: theme === 'dark' ? null : '#00A4DE',
+                                        backgroundColor: theme === 'dark' ? null : '#001e3c',
+                                    },
+                                    [`& .${gridClasses.footerContainer}`]: {
+                                        color: 'white', // Change this to your desired color
+                                    },
+                                    [`& .MuiCheckbox-root`]: {
+                                        color: 'white', // Change this to your desired color
+                                    },
+                                    ['& .MuiDataGrid-toolbarContainer']: {
+                                        ['& .MuiButton-root']: {
+                                            backgroundColor: 'transparent',
+                                        }
+                                    },
+                                    ['& .MuiToolbar-root']: {
+                                        color: 'white'
                                     }
+
                                 }}
                                 columnVisibilityModel={{
                                     user: data.decodedToken.role === 'dipe' ? false : true,

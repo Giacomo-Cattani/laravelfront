@@ -1,5 +1,6 @@
 import {
-    Card, Button, CardActions, Typography, CardContent, Unstable_Grid2 as Grid, useTheme, useMediaQuery, Tab, ToggleButton, ToggleButtonGroup
+    Card, Button, CardActions, Typography, CardContent, Unstable_Grid2 as Grid, useTheme, useMediaQuery, Tab, ToggleButton, ToggleButtonGroup,
+    IconButton
 } from "@mui/material";
 
 import TabContext from '@mui/lab/TabContext';
@@ -7,10 +8,17 @@ import TabList from '@mui/lab/TabList';
 import TabPanel from '@mui/lab/TabPanel';
 
 import { ThemeContext } from '../context/ThemeContext';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { LineChart } from '@mui/x-charts/LineChart';
 import confAxios from '../axios/confAxios';
 import { useNavigate } from "react-router-dom";
+import Filter from './Filter';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { itIT } from "@mui/x-date-pickers/locales";
+import 'dayjs/locale/it';
+import dayjs from 'dayjs';
 
 function ManagerView({ handleAlert }) {
     const screenTheme = useTheme();
@@ -68,9 +76,12 @@ function ManagerView({ handleAlert }) {
     const [data, setData] = useState([]);
     const [dataClient, setDataClient] = useState([]);
     const [client, setClient] = useState([]);
+    const [clientMod, setClientMod] = useState([]);
     const [user, setUser] = useState([]);
+    const [userMod, setUserMod] = useState([]);
     const [dataProg, setDataProg] = useState([]);
     const [prog, setProg] = useState([]);
+    const [progMod, setProgMod] = useState([]);
     const [countClient, setCountClient] = useState(0);
     const [countProg, setCountProg] = useState(0);
     const [countDip, setCountDip] = useState(0);
@@ -78,6 +89,21 @@ function ManagerView({ handleAlert }) {
 
     const [valueInput, setValueInput] = useState(null);
     const [valueInput2, setValueInput2] = useState(null);
+    const [dataPic, setDataPic] = useState(new Date());
+
+    const handleChangeGraph = (valore) => {
+        switch (value) {
+            case '1':
+                setUserMod(valore)
+                break;
+            case '2':
+                setClientMod(valore)
+                break;
+            case '3':
+                setProgMod(valore)
+                break;
+        }
+    }
 
     const handleChange = (event, newValue) => {
         setValue(newValue);
@@ -91,10 +117,10 @@ function ManagerView({ handleAlert }) {
 
     useEffect(() => {
         if (!valueInput) return;
-
         setDataClient(transformData(valueInput, format));
         setDataProg(transformProjectData(valueInput2, format));
-    }, [format])
+        setLoading(false)
+    }, [format, dataPic])
 
 
     function convertM2H(timeInMinute) {
@@ -150,10 +176,6 @@ function ManagerView({ handleAlert }) {
 
         return completeDates;
     }
-
-    useEffect(() => {
-    }, [dataClient, client]);
-
 
     const transformDataHours = (input) => {
         const result = [];
@@ -220,14 +242,15 @@ function ManagerView({ handleAlert }) {
 
         // Generate all dates of the current month
         const currentDate = new Date();
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const year = dayjs(dataPic).format('YYYY')
+        const month = dayjs(dataPic).format('M')
+
+        const daysInMonth = new Date(year, month, 0).getDate();
         const allDates = [];
 
         if (format === 'm') {
             for (let day = 1; day <= daysInMonth; day++) {
-                const date = new Date(year, month, day + 1).toISOString().split('T')[0];
+                const date = new Date(year, month - 1, day + 1).toISOString().split('T')[0];
                 allDates.push(date);
                 dataMap[date] = {};
             }
@@ -249,10 +272,12 @@ function ManagerView({ handleAlert }) {
             } else {
                 const yearMonth = item.data.slice(0, 7);
 
-                if (dataMap[yearMonth][item.cod_client]) {
-                    dataMap[yearMonth][item.cod_client] += item.total_work_time;
-                } else {
-                    dataMap[yearMonth][item.cod_client] = item.total_work_time;
+                if (dataMap[yearMonth] !== undefined) {
+                    if (dataMap[yearMonth][item.cod_client]) {
+                        dataMap[yearMonth][item.cod_client] += item.total_work_time;
+                    } else {
+                        dataMap[yearMonth][item.cod_client] = item.total_work_time;
+                    }
                 }
             }
         });
@@ -295,7 +320,7 @@ function ManagerView({ handleAlert }) {
         return result;
     };
 
-    const transformProjectData = (input, format) => {
+    const transformProjectData = (input, format, monthSet = null, yearSet = null) => {
         const result = [];
         const dataMap = {};
         const allProjects = new Set();
@@ -394,7 +419,10 @@ function ManagerView({ handleAlert }) {
                 console.log(err)
             })
     }
+    const [clientColor, setClientColor] = useState({})
 
+
+    let index = useRef(0)
     useEffect(() => {
         const fetchHours = async () => {
             await confAxios.get('/activity/hours')
@@ -438,10 +466,18 @@ function ManagerView({ handleAlert }) {
             await confAxios.get('/client/clients')
                 .then(res => {
                     const newClient = {};
+                    const newClientColor = {};
                     res.data.forEach(element => {
                         newClient[element.cod_client] = `${element.name} (${element.cod_client})`;
+                        if (!clientColor[element.cod_client]) {
+                            newClientColor[element.cod_client] = `${index.current}`;
+                            index.current++;
+                        }
                     });
+                    if (newClientColor)
+                        setClientColor(prev => ({ ...prev, ...newClientColor }))
                     setClient(newClient);
+                    setClientMod(newClient);
                 })
         }
 
@@ -449,10 +485,18 @@ function ManagerView({ handleAlert }) {
             await confAxios.get('/project/projects')
                 .then(res => {
                     const newProject = {};
+                    const newClientColor = {};
                     res.data.forEach(element => {
                         newProject[element.cod_project] = `${element.name} (${element.cod_project})`;
+                        if (!clientColor[element.cod_project]) {
+                            newClientColor[element.cod_project] = `${index.current}`;
+                            index.current++;
+                        }
                     });
+                    if (newClientColor)
+                        setClientColor(prev => ({ ...prev, ...newClientColor }))
                     setProg(newProject);
+                    setProgMod(newProject);
                 })
         }
 
@@ -460,10 +504,18 @@ function ManagerView({ handleAlert }) {
             await confAxios.get('/auth/users')
                 .then(res => {
                     const newUser = {};
+                    const newClientColor = {};
                     res.data.forEach(element => {
                         newUser[element.id] = `${element.name} ${element.surname}`;
+                        if (!clientColor[element.id]) {
+                            newClientColor[element.id] = `${index.current}`;
+                            index.current++;
+                        }
                     });
+                    if (newClientColor)
+                        setClientColor(prev => ({ ...prev, ...newClientColor }))
                     setUser(newUser);
+                    setUserMod(newUser);
                 }).catch(err => {
                     console.log(err)
                 })
@@ -484,7 +536,19 @@ function ManagerView({ handleAlert }) {
             setLoading(true)
 
 
-            await Promise.all([fetchHours(), fetchCl(), fetchPg(), fetchProg(), fetchClient(), fetchCC(), fetchCP(), fetchCD(), fetchUser()]).then(() => {
+
+            await Promise.all([
+                fetchHours(),
+                fetchCD(),
+                fetchProg(),
+                fetchClient(),
+                fetchCC(),
+                fetchCP(),
+
+                await fetchCl(),
+                await fetchPg(),
+                await fetchUser()]
+            ).then(() => {
                 setLoading(false)
             })
         }
@@ -493,6 +557,15 @@ function ManagerView({ handleAlert }) {
     }, []);
 
     const navigate = useNavigate()
+
+    const [openView, setOpenView] = useState('month');
+
+    const handleViewChange = (view) => {
+        // if (view !== 'year') {
+        //     setOpenView(view);
+        // }
+        setOpenView('month');
+    };
 
     return (
         <>
@@ -555,37 +628,65 @@ function ManagerView({ handleAlert }) {
                             } >Lista Progetti</Button>
                     </Grid>
                     <Grid xs="auto" xsOffset="auto" >
-                        <Button variant="contained"
+                        {/* <Button variant="contained"
                             sx={{ bgcolor: 'secondary.main', borderRadius: 3 }}
-                            onClick={() => handleAlert("This is a test alert", "info")} >Filtro</Button>
+                            onClick={() => handleAlert("This is a test alert", "info")} >Filtro</Button> */}
+                        <Filter handleChangeGraph={handleChangeGraph} value={value} user={user} clients={client} progets={prog} />
                     </Grid>
                 </Grid>
                 <Grid xs="auto" flexGrow={1} >
                     <TabContext value={value}>
                         <Card sx={{ p: 2 }}>
-                            <CardActions sx={{ display: 'flex', justifyContent: 'space-between', minHeight: '56px' }}>
+                            <CardActions sx={{ display: 'flex', justifyContent: 'space-between', maxHeight: '60px' }}>
                                 <Typography variant="h6" component="div">Statistiche Generali</Typography>
-                                {value !== '1' ?
-                                    < ToggleButtonGroup
-                                        sx={{ borderRadius: 3, height: 40 }}
-                                        value={format}
-                                        exclusive
-                                        onChange={handleChangeFormat}
-                                        aria-label="Platform"
-                                    >
-                                        <ToggleButton value="m">Mese</ToggleButton>
-                                        <ToggleButton value="y">Anno</ToggleButton>
-                                    </ToggleButtonGroup> : null}
+                                <Grid sx={{ mt: 1 }}>
+                                    {value !== '1' ?
+                                        <>
+                                            <LocalizationProvider
+                                                dateAdapter={AdapterDayjs}
+                                                adapterLocale="it"
+                                                localeText={itIT.components.MuiLocalizationProvider.defaultProps.localeText}
+                                            >
+                                                <DatePicker
+                                                    slotProps={{ textField: { size: 'small' } }}
+                                                    label={'Seleziona Data'}
+                                                    views={format === 'm' ? ['year', 'month'] : ['year']}
+                                                    format={format === 'm' ? "MMMM YYYY" : "YYYY"}
+                                                    openTo={openView}
+                                                    onViewChange={handleViewChange}
+                                                    value={dataPic ? dayjs(dataPic) : null}
+                                                    onChange={(e) => {
+                                                        setDataClient([]);
+                                                        setDataProg([]);
+                                                        setLoading(true)
+                                                        setDataPic(e)
+
+                                                    }}
+                                                />
+                                            </LocalizationProvider>
+                                            <ToggleButtonGroup
+                                                sx={{ borderRadius: 3, height: 40, pl: 5 }}
+                                                value={format}
+                                                exclusive
+                                                onChange={handleChangeFormat}
+                                                aria-label="Platform"
+                                            >
+                                                <ToggleButton value="m">Mese</ToggleButton>
+                                                <ToggleButton value="y">Anno</ToggleButton>
+                                            </ToggleButtonGroup>
+                                        </>
+                                        : null}
+                                </Grid>
                             </CardActions>
                             <TabList onChange={handleChange}
                                 aria-label="lab API tabs example"
                                 sx={{
                                     "& button.Mui-selected": {
-                                        color: theme === 'dark' ? '#d3a121' : '#c90076'
+                                        color: theme === 'dark' ? '#d3a121' : '#CC7722 '
                                     },
                                 }}
                                 textColor="primary"
-                                TabIndicatorProps={{ style: { backgroundColor: theme === 'dark' ? '#d3a121' : '#C90076' } }}
+                                TabIndicatorProps={{ style: { backgroundColor: theme === 'dark' ? '#d3a121' : '#CC7722 ' } }}
                             >
                                 <Tab label="Ultima Settimana" value="1" />
                                 <Tab label="Ore Cliente" value="2" />
@@ -606,10 +707,10 @@ function ManagerView({ handleAlert }) {
                                         data: ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
                                     }]}
                                     dataset={data}
-                                    series={Object.keys(user).map((key, index) => ({
+                                    series={Object.keys(userMod).map((key, index) => ({
                                         dataKey: key,
-                                        label: user[key],
-                                        color: colorsArr[index],
+                                        label: userMod[key],
+                                        color: colorsArr[clientColor[key]],
                                         valueFormatter: (value) => `${convertM2H(value)}h`,
                                     }))}
                                     height={298}
@@ -635,7 +736,7 @@ function ManagerView({ handleAlert }) {
                                             strokeWidth: 5,
                                         },
                                     }}
-                                    yAxis={[{ valueFormatter: (value) => `${convertM2H(value)}h`, scaleType: 'linear', tickCount: 5 }]}
+                                    yAxis={[{ valueFormatter: (value) => `${convertM2H(value)}h`, scaleType: 'linear' }]}
                                     xAxis={[{
                                         dataKey: 'data',
                                         scaleType: 'point',
@@ -648,13 +749,13 @@ function ManagerView({ handleAlert }) {
                                         },
                                         data:
                                             format === 'm' ?
-                                                Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }, (_, i) => i + 1).map(day => day.toString())
+                                                Array.from({ length: dayjs(dataPic).daysInMonth() }, (_, i) => (i + 1).toString())
                                                 : ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
                                     }]}
-                                    series={Object.keys(client).map((key, index) => ({
+                                    series={Object.keys(clientMod).map((key, index) => ({
                                         dataKey: key,
-                                        label: client[key],
-                                        color: colorsArr[index + Object.keys(user).length],
+                                        label: clientMod[key],
+                                        color: colorsArr[clientColor[key]],
                                         valueFormatter: (value) => `${convertM2H(value)}h`,
                                     }))}
                                     dataset={dataClient}
@@ -694,13 +795,13 @@ function ManagerView({ handleAlert }) {
                                         },
                                         data:
                                             format === 'm' ?
-                                                Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }, (_, i) => i + 1).map(day => day.toString())
+                                                Array.from({ length: dayjs(dataPic).daysInMonth() }, (_, i) => (i + 1).toString())
                                                 : ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
                                     }]}
-                                    series={Object.keys(prog).map((key, index) => ({
+                                    series={Object.keys(progMod).map((key, index) => ({
                                         dataKey: key,
-                                        label: prog[key],
-                                        color: colorsArr[index + Object.keys(user).length + Object.keys(client).length],
+                                        label: progMod[key],
+                                        color: colorsArr[clientColor[key]],
                                         valueFormatter: (value) => `${convertM2H(value)}h`,
                                     }))}
                                     dataset={dataProg}

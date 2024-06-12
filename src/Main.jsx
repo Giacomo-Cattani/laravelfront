@@ -13,6 +13,7 @@ import LoginMiddleware from './middleware/LoginMiddleware.jsx';
 import HomePage from './pages/HomePage.jsx';
 import Tasks from './pages/Tasks.jsx';
 import Projects from './pages/Projects.jsx';
+import { itIT } from '@mui/x-date-pickers/locales';
 
 const router = createBrowserRouter([
   {
@@ -62,29 +63,48 @@ const router = createBrowserRouter([
 const ThemedApp = () => {
   const { theme } = useContext(ThemeContext);
 
-  const muiTheme = createTheme({
-    palette: {
-      mode: theme,
-      background: {
-        default: theme === 'dark' ? '#121212' : '#f08080',
-      }
-    },
-    components: {
-      MuiMenu: {
-        styleOverrides: {
-          list: {
-            '&[role="menu"]': {
-              backgroundColor: theme === 'dark' ? '#003892' : '#001e3c',
-              minWidth: '105px',
-            },
+  const muiTheme = createTheme(
+    {
+      palette: {
+        mode: theme,
+        background: {
+          default: theme === 'dark' ? '#121212' : '#d3d3d3',
+        }
+      },
+      components: {
+        MuiMenu: {
+          styleOverrides: {
+            list: {
+              '&[role="menu"]': {
+                backgroundColor: theme === 'dark' ? '#003892' : '#001e3c',
+                minWidth: '105px',
+              },
+            }
           },
         },
+        MuiButton: {
+          styleOverrides: {
+            root: {
+              backgroundColor: theme === 'dark' ? '#003892' : '#001e3c',
+              color: 'white'
+            }
+          }
+        },
+        MuiDataGrid: {
+          styleOverrides: {
+            root: {
+              backgroundColor: theme === 'dark' ? null : '#001e3c',
+              color: 'white'
+            },
+          }
+        }
       },
+      typography: {
+        "fontFamily": "Cascadia Code",
+      }
     },
-    typography: {
-      "fontFamily": "Cascadia Code",
-    }
-  });
+    itIT
+  );
 
   return (
     <ThemeProvider theme={muiTheme}>
