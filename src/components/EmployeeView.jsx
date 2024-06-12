@@ -51,53 +51,61 @@ function EmployeeView({ handleAlert }) {
     const [loading, setLoading] = useState(true);
     const { theme } = useContext(ThemeContext);
 
-    function parseDate(dateString) {
-        return new Date(dateString);
-    }
+    const transformDataHours = (input) => {
+        const result = [];
+        const dataMap = {};
+        const allUsers = new Set();
 
-    function formatDate(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
+        // Find the current date
+        const currentDate = new Date();
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const day = currentDate.getDate();
 
-    function getWeekRange(dates) {
-        const sortedDates = [...dates].sort((a, b) => a - b);
-        const startDate = sortedDates[0];
-        const endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 6);
-        return [startDate, endDate];
-    }
+        var curr = new Date; // get current date
+        var first = curr.getDate() - curr.getDay() + 1; // First day is the day of the month - the day of the week
+        var last = first + 6; // last day is the first day + 6
 
-    function generateWeekDates(startDate, endDate) {
-        const dates = [];
-        let currentDate = new Date(startDate);
-        while (currentDate <= endDate) {
-            dates.push(new Date(currentDate));
-            currentDate.setDate(currentDate.getDate() + 1);
+        // Calculate the start and end dates of the week
+        const firstDayOfWeek = new Date(curr.setDate(first));
+        const lastDayOfWeek = new Date(curr.setDate(last));
+
+        // Generate all dates of the current week
+        const allDates = [];
+        for (let d = firstDayOfWeek; d <= lastDayOfWeek; d.setDate(d.getDate() + 1)) {
+            const dateString = d.toISOString().split('T')[0];
+            allDates.push(dateString);
+            dataMap[dateString] = 0;
         }
-        return dates;
-    }
 
-    function completeAndSortDates(inputData) {
-        const parsedDates = inputData.map(item => ({ ...item, date: parseDate(item.data) }));
-        const dateObjects = parsedDates.map(item => item.date);
-        const [startDate, endDate] = getWeekRange(dateObjects);
-        const fullWeekDates = generateWeekDates(startDate, endDate);
-
-        const inputDateMap = new Map(parsedDates.map(item => [formatDate(item.date), item.work_time]));
-
-        const completeDates = fullWeekDates.map(date => {
-            const formattedDate = formatDate(date);
-            return {
-                data: formattedDate,
-                work_time: inputDateMap.get(formattedDate) || 0
-            };
+        // First pass: Build dataMap and gather all unique id_user values
+        input.forEach(item => {
+            if (!dataMap[item.data]) {
+                dataMap[item.data] = 0;
+            }
+            dataMap[item.data] = item.work_time;
+            allUsers.add(item.id_user);
         });
 
-        return completeDates;
-    }
+        // Second pass: Ensure all id_user entries are present in each date with default value 0
+        Object.keys(dataMap).forEach(date => {
+            allUsers.forEach(user => {
+                if (!dataMap[date]) {
+                    dataMap[date] = 0;
+                }
+            });
+        });
+
+        // Build the final result array
+        for (const [date, workTimes] of Object.entries(dataMap)) {
+            result.push({
+                data: date,
+                work_time: workTimes
+            });
+        }
+
+        return result;
+    };
 
     const fetchLastProjects = async () => {
         await confAxios.get('/activity/proj')
@@ -110,6 +118,7 @@ function EmployeeView({ handleAlert }) {
                 console.log(err)
             })
     }
+
 
     useEffect(() => {
         const fetchProjects = async () => {
@@ -151,11 +160,8 @@ function EmployeeView({ handleAlert }) {
         const fetchHours = async () => {
             await confAxios.get('/activity/hours')
                 .then(res => {
-                    if (res.data.length === 0) {
-                        return
-                    }
                     setDatas([])
-                    const result = completeAndSortDates(res.data)
+                    const result = transformDataHours(res.data)
                     result.forEach(element => {
                         const workTime = Number(element.work_time);
                         setDatas(prev => [...prev, workTime.toFixed(2)]);
@@ -205,7 +211,7 @@ function EmployeeView({ handleAlert }) {
             confAxios.post('/activity/insert', {
                 'cod_task': project.label.split(' ')[1].slice(1, -1),
                 'id_user': 1,
-                'data': data.add(1, 'day'),
+                'data': data.format('YYYY-MM-DD'),
                 'work_time': convertedHour,
                 'id_location': location.id,
                 'id_project': project.id,
@@ -266,6 +272,8 @@ function EmployeeView({ handleAlert }) {
         setFilteredProjects(projects);
         setFilteredClients(clients);
     }, [projects, clients]);
+
+
 
     return (
         <>
@@ -391,7 +399,12 @@ function EmployeeView({ handleAlert }) {
                                     },
                                 }}
                                 yAxis={[{ valueFormatter: (value) => `${convertM2H(value)}h`, scaleType: 'linear', tickCount: 5 }]}
-                                xAxis={[{ scaleType: 'point', data: ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'] }]}
+                                xAxis={[{
+                                    dataKey: 'data',
+                                    scaleType: 'point',
+                                    valueFormatter: (value, context) => value,
+                                    data: ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
+                                }]}
                                 series={[
                                     {
                                         data: datas ? datas : [],

@@ -86,6 +86,7 @@ function ManagerView({ handleAlert }) {
     const [countProg, setCountProg] = useState(0);
     const [countDip, setCountDip] = useState(0);
     const [loading, setLoading] = useState();
+    const [loadingCount, setLoadingCount] = useState();
 
     const [valueInput, setValueInput] = useState(null);
     const [valueInput2, setValueInput2] = useState(null);
@@ -320,21 +321,21 @@ function ManagerView({ handleAlert }) {
         return result;
     };
 
-    const transformProjectData = (input, format, monthSet = null, yearSet = null) => {
+    const transformProjectData = (input, format) => {
         const result = [];
         const dataMap = {};
         const allProjects = new Set();
 
         // Generate all dates of the current month or all months of the current year
         const currentDate = new Date();
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const year = dayjs(dataPic).format('YYYY')
+        const month = dayjs(dataPic).format('M')
+        const daysInMonth = new Date(year, month, 0).getDate();
         const allDates = [];
 
         if (format === 'm') {
             for (let day = 1; day <= daysInMonth; day++) {
-                const date = new Date(year, month, day + 1).toISOString().split('T')[0];
+                const date = new Date(year, month - 1, day + 1).toISOString().split('T')[0];
                 allDates.push(date);
                 dataMap[date] = {};
             }
@@ -356,10 +357,12 @@ function ManagerView({ handleAlert }) {
             } else {
                 const yearMonth = item.data.slice(0, 7);
 
-                if (dataMap[yearMonth][item.cod_project]) {
-                    dataMap[yearMonth][item.cod_project] += item.total_work_time;
-                } else {
-                    dataMap[yearMonth][item.cod_project] = item.total_work_time;
+                if (dataMap[yearMonth] !== undefined) {
+                    if (dataMap[yearMonth][item.cod_project]) {
+                        dataMap[yearMonth][item.cod_project] += item.total_work_time;
+                    } else {
+                        dataMap[yearMonth][item.cod_project] = item.total_work_time;
+                    }
                 }
             }
         });
@@ -431,6 +434,7 @@ function ManagerView({ handleAlert }) {
                         return
                     }
                     const result = transformDataHours(res.data)
+                    console.log(result)
                     setData(result)
                 }).catch(err => {
                     console.log(err)
@@ -534,6 +538,7 @@ function ManagerView({ handleAlert }) {
             setUser([])
 
             setLoading(true)
+            setLoadingCount(true)
 
 
 
@@ -550,6 +555,7 @@ function ManagerView({ handleAlert }) {
                 await fetchUser()]
             ).then(() => {
                 setLoading(false)
+                setLoadingCount(false)
             })
         }
 
@@ -579,7 +585,7 @@ function ManagerView({ handleAlert }) {
                         </CardContent>
                         <CardActions sx={{ justifyContent: 'end' }}>
                             <Typography sx={{ pb: 2, pr: 2 }} variant="h3" component="div">
-                                {loading ? '...' : countDip}
+                                {loadingCount ? '...' : countDip}
                             </Typography>
                         </CardActions>
                     </Card>
@@ -593,7 +599,7 @@ function ManagerView({ handleAlert }) {
                         </CardContent>
                         <CardActions sx={{ justifyContent: 'end' }}>
                             <Typography sx={{ pb: 2, pr: 2 }} variant="h3" component="div">
-                                {loading ? '...' : countClient}
+                                {loadingCount ? '...' : countClient}
                             </Typography>
                         </CardActions>
                     </Card>
@@ -607,7 +613,7 @@ function ManagerView({ handleAlert }) {
                         </CardContent>
                         <CardActions sx={{ justifyContent: 'end' }}>
                             <Typography sx={{ pb: 2, pr: 2 }} variant="h3" component="div">
-                                {loading ? '...' : countProg}
+                                {loadingCount ? '...' : countProg}
                             </Typography>
                         </CardActions>
                     </Card>
